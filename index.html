@@ -47,13 +47,31 @@
 </main>
 
 <script>
-const API = "https://creddit-server.onrender.com/"; // This is supposed to be the backend
+const API = "https://YOUR-BACKEND-URL.onrender.com"; // replace with your backend URL
 let currentHandle = null;
 
 // Safe helper to set text
 function setText(id, text) {
   const el = document.getElementById(id);
   if (el) el.textContent = text;
+}
+
+// Refresh accounts (reusable)
+async function refreshAccounts() {
+  if (!currentHandle) return;
+  try {
+    const res = await fetch(API + "/accounts/" + encodeURIComponent(currentHandle));
+    const accounts = await res.json();
+    const list = document.getElementById("accountList");
+    list.innerHTML = "";
+    accounts.forEach(a => {
+      const div = document.createElement("div");
+      div.textContent = a.type + " — " + a.balance + " cR (id: " + a.id + ")";
+      list.appendChild(div);
+    });
+  } catch (err) {
+    setText("sessionInfo","Error fetching accounts");
+  }
 }
 
 // Signup
@@ -67,30 +85,21 @@ document.getElementById("btnSignup").onclick = async () => {
   const data = await res.json();
   currentHandle = handle;
   setText("sessionInfo","Signed up as "+handle);
+  await refreshAccounts();
 };
 
 // Login
-document.getElementById("btnLogin").onclick = () => {
+document.getElementById("btnLogin").onclick = async () => {
   const handle = document.getElementById("handle").value.trim();
   const password = document.getElementById("password").value;
   // In this simple demo, login just sets the session handle
   currentHandle = handle;
   setText("sessionInfo","Logged in as "+handle);
+  await refreshAccounts();
 };
 
-// Refresh accounts
-document.getElementById("btnRefresh").onclick = async () => {
-  if (!currentHandle) return;
-  const res = await fetch(API + "/accounts/" + encodeURIComponent(currentHandle));
-  const accounts = await res.json();
-  const list = document.getElementById("accountList");
-  list.innerHTML = "";
-  accounts.forEach(a => {
-    const div = document.createElement("div");
-    div.textContent = a.type + " — " + a.balance + " cR (id: " + a.id + ")";
-    list.appendChild(div);
-  });
-};
+// Manual refresh
+document.getElementById("btnRefresh").onclick = refreshAccounts;
 
 // Transfer
 document.getElementById("btnTransfer").onclick = async () => {
@@ -104,6 +113,7 @@ document.getElementById("btnTransfer").onclick = async () => {
   const data = await res.json();
   if (data.error) setText("transferInfo","Error: "+data.error);
   else setText("transferInfo","Transfer complete");
+  await refreshAccounts();
 };
 </script>
 </body>
