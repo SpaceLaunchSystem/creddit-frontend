@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>cReddit Bank</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: sans-serif; background:#0f172a; color:#e5e7eb; margin:0; }
+    header { background:#111827; padding:12px; }
+    h1 { margin:0; font-size:20px; }
+    main { display:flex; gap:20px; padding:20px; }
+    section { background:#1f2937; padding:16px; border-radius:8px; flex:1; }
+    input, button { margin:4px 0; padding:8px; border-radius:6px; border:1px solid #374151; }
+    button { cursor:pointer; }
+    .list div { margin:4px 0; }
+    .muted { color:#9ca3af; font-size:12px; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>cReddit Bank (Play Money)</h1>
+</header>
+<main>
+  <section>
+    <h2>Session</h2>
+    <input id="handle" placeholder="Handle" />
+    <input id="password" type="password" placeholder="Password" />
+    <div>
+      <button id="btnSignup">Sign up</button>
+      <button id="btnLogin">Log in</button>
+    </div>
+    <div id="sessionInfo" class="muted"></div>
+
+    <h2>Accounts</h2>
+    <div id="accountList" class="list"></div>
+    <button id="btnRefresh">Refresh</button>
+  </section>
+
+  <section>
+    <h2>Transfer</h2>
+    <input id="fromAcc" placeholder="From account id" />
+    <input id="toHandle" placeholder="To handle" />
+    <input id="amount" type="number" placeholder="Amount" />
+    <button id="btnTransfer">Send</button>
+    <div id="transferInfo" class="muted"></div>
+  </section>
+</main>
+
+<script>
+const API = "https://creddit-server.onrender.com/"; // This is supposed to be the backend
+let currentHandle = null;
+
+// Safe helper to set text
+function setText(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+
+// Signup
+document.getElementById("btnSignup").onclick = async () => {
+  const handle = document.getElementById("handle").value.trim();
+  const password = document.getElementById("password").value;
+  const res = await fetch(API + "/signup", {
+    method:"POST", headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ handle, password })
+  });
+  const data = await res.json();
+  currentHandle = handle;
+  setText("sessionInfo","Signed up as "+handle);
+};
+
+// Login
+document.getElementById("btnLogin").onclick = () => {
+  const handle = document.getElementById("handle").value.trim();
+  const password = document.getElementById("password").value;
+  // In this simple demo, login just sets the session handle
+  currentHandle = handle;
+  setText("sessionInfo","Logged in as "+handle);
+};
+
+// Refresh accounts
+document.getElementById("btnRefresh").onclick = async () => {
+  if (!currentHandle) return;
+  const res = await fetch(API + "/accounts/" + encodeURIComponent(currentHandle));
+  const accounts = await res.json();
+  const list = document.getElementById("accountList");
+  list.innerHTML = "";
+  accounts.forEach(a => {
+    const div = document.createElement("div");
+    div.textContent = a.type + " — " + a.balance + " cR (id: " + a.id + ")";
+    list.appendChild(div);
+  });
+};
+
+// Transfer
+document.getElementById("btnTransfer").onclick = async () => {
+  const fromAcc = document.getElementById("fromAcc").value.trim();
+  const toHandle = document.getElementById("toHandle").value.trim();
+  const amount = Number(document.getElementById("amount").value);
+  const res = await fetch(API + "/transfer", {
+    method:"POST", headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ fromAcc, toHandle, amount })
+  });
+  const data = await res.json();
+  if (data.error) setText("transferInfo","Error: "+data.error);
+  else setText("transferInfo","Transfer complete");
+};
+</script>
+</body>
+</html>
