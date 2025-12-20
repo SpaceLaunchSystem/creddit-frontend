@@ -29,7 +29,10 @@
       <button id="btnSignup">Sign up</button>
       <button id="btnLogin">Log in</button>
     </div>
+
+    <button id="btnFaucet">Faucet (get 100 cR)</button>
     <div id="sessionInfo" class="muted"></div>
+    <div id="faucetInfo" class="muted"></div>
 
     <h2>Accounts</h2>
     <div id="accountList" class="list"></div>
@@ -47,16 +50,14 @@
 </main>
 
 <script>
-const API = "https://creddit-server.onrender.com"; // replace with your backend URL
+const API = "https://YOUR-BACKEND-URL.onrender.com"; // replace with your backend URL
 let currentHandle = null;
 
-// Safe helper to set text
 function setText(id, text) {
   const el = document.getElementById(id);
   if (el) el.textContent = text;
 }
 
-// Refresh accounts (reusable)
 async function refreshAccounts() {
   if (!currentHandle) return;
   try {
@@ -69,52 +70,101 @@ async function refreshAccounts() {
       div.textContent = a.type + " — " + a.balance + " cR (id: " + a.id + ")";
       list.appendChild(div);
     });
-  } catch (err) {
+  } catch {
     setText("sessionInfo","Error fetching accounts");
   }
 }
 
-// Signup
+// SIGNUP
 document.getElementById("btnSignup").onclick = async () => {
   const handle = document.getElementById("handle").value.trim();
   const password = document.getElementById("password").value;
+
   const res = await fetch(API + "/signup", {
-    method:"POST", headers:{ "Content-Type":"application/json" },
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
     body: JSON.stringify({ handle, password })
   });
+
   const data = await res.json();
+  if (data.error) {
+    setText("sessionInfo", data.error);
+    return;
+  }
+
   currentHandle = handle;
-  setText("sessionInfo","Signed up as "+handle);
+  setText("sessionInfo","Signed up as " + handle);
   await refreshAccounts();
 };
 
-// Login
+// LOGIN
 document.getElementById("btnLogin").onclick = async () => {
   const handle = document.getElementById("handle").value.trim();
   const password = document.getElementById("password").value;
-  // In this simple demo, login just sets the session handle
+
+  const res = await fetch(API + "/login", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ handle, password })
+  });
+
+  const data = await res.json();
+  if (data.error) {
+    setText("sessionInfo","Invalid credentials");
+    return;
+  }
+
   currentHandle = handle;
-  setText("sessionInfo","Logged in as "+handle);
+  setText("sessionInfo","Logged in as " + handle);
   await refreshAccounts();
 };
 
-// Manual refresh
-document.getElementById("btnRefresh").onclick = refreshAccounts;
+// FAUCET
+document.getElementById("btnFaucet").onclick = async () => {
+  if (!currentHandle) {
+    setText("faucetInfo","Log in first");
+    return;
+  }
 
-// Transfer
+  const res = await fetch(API + "/faucet", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ handle: currentHandle })
+  });
+
+  const data = await res.json();
+  if (data.error) {
+    setText("faucetInfo","Error: " + data.error);
+  } else {
+    setText("faucetInfo","Faucet credited. New balance: " + data.balance + " cR");
+  }
+
+  await refreshAccounts();
+};
+
+// TRANSFER
 document.getElementById("btnTransfer").onclick = async () => {
   const fromAcc = document.getElementById("fromAcc").value.trim();
   const toHandle = document.getElementById("toHandle").value.trim();
   const amount = Number(document.getElementById("amount").value);
+
   const res = await fetch(API + "/transfer", {
-    method:"POST", headers:{ "Content-Type":"application/json" },
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
     body: JSON.stringify({ fromAcc, toHandle, amount })
   });
+
   const data = await res.json();
-  if (data.error) setText("transferInfo","Error: "+data.error);
-  else setText("transferInfo","Transfer complete");
+  if (data.error) {
+    setText("transferInfo","Error: " + data.error);
+  } else {
+    setText("transferInfo","Transfer complete");
+  }
+
   await refreshAccounts();
 };
+
+document.getElementById("btnRefresh").onclick = refreshAccounts;
 </script>
 </body>
 </html>
